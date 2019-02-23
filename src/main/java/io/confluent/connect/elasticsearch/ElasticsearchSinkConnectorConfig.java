@@ -153,6 +153,17 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
       + " mapping conflict or a field name containing illegal characters. Valid options are "
       + "'ignore', 'warn', and 'fail'.";
 
+  public static final String AWS_REGION_CONFIG = "aws.region";
+  private static final String AWS_REGION_DOC = "The region where your AWS Elastic service lives."
+      + "The value is passed directly to the aws java core sdk, so the same values are valid."
+      + "The region can be automatically determined in most cases.";
+
+  public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
+  private static final String AWS_ACCESS_KEY_ID_DOC = "The AWS access key id";
+
+  public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.key";
+  private static final String AWS_SECRET_ACCESS_KEY_DOC = "The AWS access secret key";
+
   public static final String CONNECTION_SSL_CONFIG_PREFIX = "elastic.https.";
 
   protected static ConfigDef baseConfigDef() {
@@ -291,6 +302,36 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
         ++order, 
         Width.SHORT, 
         "Read Timeout"
+    ).define(
+        AWS_REGION_CONFIG,
+        Type.STRING,
+        null,
+        Importance.MEDIUM,
+        AWS_REGION_DOC,
+        group,
+        ++order,
+        Width.SHORT,
+        "AWS Region"
+    ).define(
+            AWS_ACCESS_KEY_ID_CONFIG,
+            Type.STRING,
+            null,
+            Importance.MEDIUM,
+            AWS_ACCESS_KEY_ID_DOC,
+            group,
+            ++order,
+            Width.MEDIUM,
+            "AWS Access Key ID"
+    ).define(
+            AWS_SECRET_ACCESS_KEY_CONFIG,
+            Type.PASSWORD,
+            null,
+            Importance.MEDIUM,
+            AWS_SECRET_ACCESS_KEY_DOC,
+            group,
+            ++order,
+            Width.LONG,
+            "AWS Secret Access Key"
     );
   }
 

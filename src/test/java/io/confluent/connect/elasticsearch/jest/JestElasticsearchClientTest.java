@@ -137,6 +137,15 @@ public class JestElasticsearchClientTest {
   }
 
   @Test
+  public void connectsToAwsElasticSearch() {
+    Map<String, String> props = new HashMap<>();
+    props.put(ElasticsearchSinkConnectorConfig.CONNECTION_URL_CONFIG, "http://localhost:9200");
+    props.put(ElasticsearchSinkConnectorConfig.CONNECTION_USERNAME_CONFIG, "");
+    props.put(ElasticsearchSinkConnectorConfig.CONNECTION_PASSWORD_CONFIG, "");
+    props.put(ElasticsearchSinkConnectorConfig.TYPE_NAME_CONFIG, "kafka-connect");
+  }
+
+  @Test
   public void getsVersion() {
     JestElasticsearchClient client = new JestElasticsearchClient(jestClient);
     assertThat(client.getVersion(), is(equalTo(ElasticsearchClient.Version.ES_V1)));

@@ -15,6 +15,7 @@
 
 package io.confluent.connect.elasticsearch.jest;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -45,6 +46,8 @@ import io.searchbox.indices.mapping.GetMapping;
 import io.searchbox.indices.mapping.PutMapping;
 import org.apache.http.HttpHost;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;
@@ -54,12 +57,18 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import vc.inreach.aws.request.AWSSigningRequestInterceptor;
+import vc.inreach.aws.request.AWSSigner;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.google.common.base.Supplier;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLContext;
 
@@ -98,6 +107,7 @@ public class JestElasticsearchClient implements ElasticsearchClient {
       JestClientFactory factory = new JestClientFactory();
       factory.setHttpClientConfig(new HttpClientConfig.Builder(address)
           .multiThreaded(true)
+          .readTimeout(60000)  // for AWS it is necessary to have a timeout at least larger than 3000ms
           .build()
       );
       this.client = factory.getObject();
@@ -115,12 +125,8 @@ public class JestElasticsearchClient implements ElasticsearchClient {
     }
   }
 
-  public JestElasticsearchClient(Map<String, String> props) {
-    this(props, new JestClientFactory());
-  }
-
   // visible for testing
-  protected JestElasticsearchClient(Map<String, String> props, JestClientFactory factory) {
+  public JestElasticsearchClient(Map<String, String> props) {
     try {
       ElasticsearchSinkConnectorConfig config = new ElasticsearchSinkConnectorConfig(props);
       final int connTimeout = config.getInt(
@@ -139,11 +145,40 @@ public class JestElasticsearchClient implements ElasticsearchClient {
           .connTimeout(connTimeout)
           .readTimeout(readTimeout)
           .multiThreaded(true);
+
       if (username != null && password != null) {
         builder.defaultCredentials(username, password.value())
             .preemptiveAuthTargetHosts(address.stream()
                 .map(addr -> HttpHost.create(addr)).collect(Collectors.toSet()));
       }
+
+      final String awsRegion = "ap-southeast-2";
+      // final String awsRegion =
+      // config.getString(ElasticsearchSinkConnectorConfig.AWS_REGION_CONFIG);
+
+      // if (awsRegion != null) {
+      final Supplier<LocalDateTime> clock = () -> LocalDateTime.now(ZoneOffset.UTC);
+      final AWSCredentialsProvider credProvider = new DefaultAWSCredentialsProviderChain();
+      final AWSSigner awsSigner = new AWSSigner(credProvider, awsRegion, "es", clock);
+      final AWSSigningRequestInterceptor interceptor =
+              new AWSSigningRequestInterceptor(awsSigner);
+
+      // }
+
+      final JestClientFactory factory = new JestClientFactory() {
+
+        @Override
+        protected HttpClientBuilder configureHttpClient(HttpClientBuilder builder) {
+          builder.addInterceptorLast(interceptor);
+          return builder;
+        }
+
+        @Override
+        protected HttpAsyncClientBuilder configureHttpClient(HttpAsyncClientBuilder builder) {
+          builder.addInterceptorLast(interceptor);
+          return builder;
+        }
+      };
 
       if (config.secured()) {
         log.info("Using secured connection to {}", address);
