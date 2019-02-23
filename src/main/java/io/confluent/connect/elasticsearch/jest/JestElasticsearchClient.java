@@ -16,8 +16,8 @@
 package io.confluent.connect.elasticsearch.jest;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -165,14 +165,11 @@ public class JestElasticsearchClient implements ElasticsearchClient {
       if (awsRegion != null && accessKeyId != null && secretKey != null) {
         final Supplier<LocalDateTime> clock = () -> LocalDateTime.now(ZoneOffset.UTC);
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
-                accessKeyId, secretKey.toString());
-        final AWSCredentialsProvider awsDefaultChain
-                = new DefaultAWSCredentialsProviderChain();
-        // final AWSCredentialsProvider credProvider = new AWSStaticCredentialsProvider(awsCreds);
-        final AWSSigner awsSigner = new AWSSigner(awsDefaultChain, awsRegion, "es", clock);
+                accessKeyId, secretKey.value());
+        final AWSCredentialsProvider credProvider = new AWSStaticCredentialsProvider(awsCreds);
+        final AWSSigner awsSigner = new AWSSigner(credProvider, awsRegion, "es", clock);
         final AWSSigningRequestInterceptor interceptor =
                 new AWSSigningRequestInterceptor(awsSigner);
-
 
         factory = new JestClientFactory() {
 
@@ -237,7 +234,14 @@ public class JestElasticsearchClient implements ElasticsearchClient {
     Version defaultVersion = Version.ES_V6;
 
     NodesInfo info = new NodesInfo.Builder().addCleanApiParameter("version").build();
-    JsonObject result = client.execute(info).getJsonObject();
+    JestResult response = client.execute(info);
+    if (response.getResponseCode() == 403) {
+      LOG.warn("Couldn't get Elasticsearch version, http status code 403, credentials may be invalid.");
+      return defaultVersion;
+    }
+
+    JsonObject result = response.getJsonObject();
+
     if (result == null) {
       LOG.warn("Couldn't get Elasticsearch version, result is null");
       return defaultVersion;
