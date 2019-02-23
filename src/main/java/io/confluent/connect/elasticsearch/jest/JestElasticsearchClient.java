@@ -16,6 +16,8 @@
 package io.confluent.connect.elasticsearch.jest;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -59,7 +61,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import vc.inreach.aws.request.AWSSigningRequestInterceptor;
 import vc.inreach.aws.request.AWSSigner;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -107,7 +108,7 @@ public class JestElasticsearchClient implements ElasticsearchClient {
       JestClientFactory factory = new JestClientFactory();
       factory.setHttpClientConfig(new HttpClientConfig.Builder(address)
           .multiThreaded(true)
-          .readTimeout(60000)  // for AWS it is necessary to have a timeout at least larger than 3000ms
+          .readTimeout(60000)  // for AWS it is necessary to have a long timeout.
           .build()
       );
       this.client = factory.getObject();
@@ -152,33 +153,42 @@ public class JestElasticsearchClient implements ElasticsearchClient {
                 .map(addr -> HttpHost.create(addr)).collect(Collectors.toSet()));
       }
 
-      final String awsRegion = "ap-southeast-2";
-      // final String awsRegion =
-      // config.getString(ElasticsearchSinkConnectorConfig.AWS_REGION_CONFIG);
+      // final String awsRegion = "ap-southeast-2";
+      final String awsRegion = config.getString(ElasticsearchSinkConnectorConfig.AWS_REGION_CONFIG);
+      final String accessKeyId = config.getString(
+              ElasticsearchSinkConnectorConfig.AWS_ACCESS_KEY_ID_CONFIG);
+      final String secretKey = config.getString(
+              ElasticsearchSinkConnectorConfig.AWS_SECRET_ACCESS_KEY_CONFIG);
 
-      // if (awsRegion != null) {
-      final Supplier<LocalDateTime> clock = () -> LocalDateTime.now(ZoneOffset.UTC);
-      final AWSCredentialsProvider credProvider = new DefaultAWSCredentialsProviderChain();
-      final AWSSigner awsSigner = new AWSSigner(credProvider, awsRegion, "es", clock);
-      final AWSSigningRequestInterceptor interceptor =
-              new AWSSigningRequestInterceptor(awsSigner);
+      JestClientFactory factory = null;
 
-      // }
+      if (awsRegion != null && accessKeyId != null && secretKey != null) {
+        final Supplier<LocalDateTime> clock = () -> LocalDateTime.now(ZoneOffset.UTC);
+        final BasicAWSCredentials awsCreds = new BasicAWSCredentials(accessKeyId, secretKey);
+        //final AWSCredentialsProvider credProvider = new DefaultAWSCredentialsProviderChain();
+        final AWSCredentialsProvider credProvider = new AWSStaticCredentialsProvider(awsCreds);
+        final AWSSigner awsSigner = new AWSSigner(credProvider, awsRegion, "es", clock);
+        final AWSSigningRequestInterceptor interceptor =
+                new AWSSigningRequestInterceptor(awsSigner);
 
-      final JestClientFactory factory = new JestClientFactory() {
 
-        @Override
-        protected HttpClientBuilder configureHttpClient(HttpClientBuilder builder) {
-          builder.addInterceptorLast(interceptor);
-          return builder;
-        }
+        factory = new JestClientFactory() {
 
-        @Override
-        protected HttpAsyncClientBuilder configureHttpClient(HttpAsyncClientBuilder builder) {
-          builder.addInterceptorLast(interceptor);
-          return builder;
-        }
-      };
+          @Override
+          protected HttpClientBuilder configureHttpClient(HttpClientBuilder builder) {
+            builder.addInterceptorLast(interceptor);
+            return builder;
+          }
+
+          @Override
+          protected HttpAsyncClientBuilder configureHttpClient(HttpAsyncClientBuilder builder) {
+            builder.addInterceptorLast(interceptor);
+            return builder;
+          }
+        };
+      } else {
+        factory = new JestClientFactory();
+      }
 
       if (config.secured()) {
         log.info("Using secured connection to {}", address);

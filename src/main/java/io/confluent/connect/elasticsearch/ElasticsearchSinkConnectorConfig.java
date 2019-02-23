@@ -282,7 +282,7 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
         ++order,
         Width.SHORT,
         "Retry Backoff (ms)"
-      ).define(
+    ).define(
         CONNECTION_TIMEOUT_MS_CONFIG, 
         Type.INT, 
         1000, 
@@ -292,7 +292,7 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
         ++order, 
         Width.SHORT, 
         "Connection Timeout"
-        ).define(
+    ).define(
         READ_TIMEOUT_MS_CONFIG, 
         Type.INT, 
         3000, 
@@ -313,25 +313,25 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
         Width.SHORT,
         "AWS Region"
     ).define(
-            AWS_ACCESS_KEY_ID_CONFIG,
-            Type.STRING,
-            null,
-            Importance.MEDIUM,
-            AWS_ACCESS_KEY_ID_DOC,
-            group,
-            ++order,
-            Width.MEDIUM,
-            "AWS Access Key ID"
+        AWS_ACCESS_KEY_ID_CONFIG,
+        Type.STRING,
+        null,
+        Importance.MEDIUM,
+        AWS_ACCESS_KEY_ID_DOC,
+        group,
+        ++order,
+        Width.MEDIUM,
+        "AWS Access Key ID"
     ).define(
-            AWS_SECRET_ACCESS_KEY_CONFIG,
-            Type.PASSWORD,
-            null,
-            Importance.MEDIUM,
-            AWS_SECRET_ACCESS_KEY_DOC,
-            group,
-            ++order,
-            Width.LONG,
-            "AWS Secret Access Key"
+        AWS_SECRET_ACCESS_KEY_CONFIG,
+        Type.PASSWORD,
+        null,
+        Importance.MEDIUM,
+        AWS_SECRET_ACCESS_KEY_DOC,
+        group,
+        ++order,
+        Width.LONG,
+        "AWS Secret Access Key"
     );
   }
 
