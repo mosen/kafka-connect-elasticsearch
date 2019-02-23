@@ -24,4 +24,10 @@
             files="(ElasticsearchWriter).java"
     />
 
+    <!-- Would not make sense to break up config into multiple methods -->
+    <suppress
+            checks="(MethodLength)"
+            files="(ElasticsearchSinkConnectorConfig).java"
+    />
+
 </suppressions>
