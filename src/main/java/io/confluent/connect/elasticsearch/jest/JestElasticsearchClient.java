@@ -16,8 +16,8 @@
 package io.confluent.connect.elasticsearch.jest;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -157,17 +157,19 @@ public class JestElasticsearchClient implements ElasticsearchClient {
       final String awsRegion = config.getString(ElasticsearchSinkConnectorConfig.AWS_REGION_CONFIG);
       final String accessKeyId = config.getString(
               ElasticsearchSinkConnectorConfig.AWS_ACCESS_KEY_ID_CONFIG);
-      final String secretKey = config.getString(
+      final Password secretKey = config.getPassword(
               ElasticsearchSinkConnectorConfig.AWS_SECRET_ACCESS_KEY_CONFIG);
 
-      JestClientFactory factory = null;
+      JestClientFactory factory;
 
       if (awsRegion != null && accessKeyId != null && secretKey != null) {
         final Supplier<LocalDateTime> clock = () -> LocalDateTime.now(ZoneOffset.UTC);
-        final BasicAWSCredentials awsCreds = new BasicAWSCredentials(accessKeyId, secretKey);
-        //final AWSCredentialsProvider credProvider = new DefaultAWSCredentialsProviderChain();
-        final AWSCredentialsProvider credProvider = new AWSStaticCredentialsProvider(awsCreds);
-        final AWSSigner awsSigner = new AWSSigner(credProvider, awsRegion, "es", clock);
+        final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
+                accessKeyId, secretKey.toString());
+        final AWSCredentialsProvider awsDefaultChain
+                = new DefaultAWSCredentialsProviderChain();
+        // final AWSCredentialsProvider credProvider = new AWSStaticCredentialsProvider(awsCreds);
+        final AWSSigner awsSigner = new AWSSigner(awsDefaultChain, awsRegion, "es", clock);
         final AWSSigningRequestInterceptor interceptor =
                 new AWSSigningRequestInterceptor(awsSigner);
 
