@@ -236,7 +236,8 @@ public class JestElasticsearchClient implements ElasticsearchClient {
     NodesInfo info = new NodesInfo.Builder().addCleanApiParameter("version").build();
     JestResult response = client.execute(info);
     if (response.getResponseCode() == 403) {
-      LOG.warn("Couldn't get Elasticsearch version, http status code 403, credentials may be invalid.");
+      LOG.warn("Couldn't get Elasticsearch version, http status code 403,"
+              + "credentials may be invalid.");
       return defaultVersion;
     }
 
